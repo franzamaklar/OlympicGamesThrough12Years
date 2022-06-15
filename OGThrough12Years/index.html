@@ -1,0 +1,3504 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Audiowide&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Days+One&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bungee+Inline&display=swap');
+
+        svg {
+            margin-top: 10px;
+        }
+
+        body {
+            background-color: black;
+        }
+
+        span {
+            font-family: 'Days One', sans-serif;
+            color: white;
+
+        }
+
+        button {
+            margin-left: 60px;
+            background-color: black;
+        }
+
+        span:hover {
+            color: red;
+        }
+
+        img {
+            margin-left: 70px;
+            margin-top: 10px;
+        }
+
+        body {
+            overflow: hidden;
+        }
+    </style>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://d3js.org/d3-timer.v1.min.js"></script>
+
+    <p id="headline" style="display:inline;">
+        <button id="Beijing" onclick="updateMap(Year[0])"><span>Beijing - 2008</span></button>
+        <button id="London" onclick="updateMap(Year[1])"><span>London - 2012</span></button>
+        <span style="margin-left:60px;">ANALYSIS OF OLYMPIC GAMES FROM 2008 TO 2020</span>
+        <button id="Rio" onclick="updateMap(Year[2])"><span>Rio - 2016</span></button>
+        <button id="Tokyo" onclick="updateMap(Year[3])"><span>Tokyo - 2020</span></button>
+        <img src="https://99designs-blog.imgix.net/blog/wp-content/uploads/2018/02/900px-Olympic_flag.svg.png?auto=format&q=60&fit=max&w=930"
+            alt="Olympic Games logo" width="auto" height="30">
+    </p>
+
+</head>
+
+<body>
+
+    <script>
+        //Defining years
+
+        var Year = ["2008", "2012", "2016", "2020"];
+
+        //Defining margins
+        var margin = {
+            top: window.innerHeight * 0.3,
+            left: 50, bottom: window.innerHeight * 0.4,
+            right: 50
+        };
+
+        //Defining size of SVG
+        var width = 1820; //window.innerWidth - margin.left - margin.right; INNERWINDOW WIDTH
+        var height = 260; //window.innerHeight - margin.top - margin.bottom; INNERWINDOW HEIGHT
+
+        //SVG
+        var svg =
+            d3.select("body").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .style("background", "white")
+
+        //Making projection    
+        var projection = d3.geo.mercator()
+        var path = d3.geo.path()
+            .projection(projection.center([12, 70])
+                .scale(200)
+                .translate([width / 2, height]));
+
+
+        function updateMap(currentYear) {
+            d3.selectAll("svg > *").remove();
+            if (currentYear == "2008") {
+                var world = d3.json("worldData2008.json", function (error, world) {
+                    var statesData = topojson.feature(world, world.objects.countries);
+                    var color = d3.scale.linear()
+                        .domain([0, 110])
+                        .range(["white", "red"]);
+
+                    var results = [];
+
+                    var states = svg.append("g");
+                    states.selectAll('path.country')
+                        .data(statesData.features)
+                        .enter()
+                        .append('path')
+                        .classed("state", true)
+                        .attr("d", path)
+                        .attr("id", function (d) { return d.id; })
+                        .attr("name", function (d) {
+                            return d.properties.Country_Name;
+                        })
+                        .style("fill", function (d) {
+                            if (d.properties.Country_Name == d.properties.Host_country) {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze)
+                                return "#FFD700";
+                            }
+                            else if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                results.push(0)
+                                return "gray";
+                            } else {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                                return color(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                            }
+                        })
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                        .on('mouseover', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '0.2');
+                        })
+                        .on('mouseout', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '1');
+                        })
+                        .on('click', zoomInfo);
+
+
+                    //Legend
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 650).
+                        attr("r", 12).
+                        attr("fill", "gray").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 650).
+                        text("Did not participate").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 680).
+                        attr("r", 12).
+                        attr("fill", "white").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 680).
+                        text("0 - 10 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 710).
+                        attr("r", 12).
+                        style("fill", color(20));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 710).
+                        text("10 - 30 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 740).
+                        attr("r", 12).
+                        style("fill", color(45));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 740).
+                        text("30 - 50 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 770).
+                        attr("r", 12).
+                        style("fill", color(90));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 770).
+                        text("50 - 100 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 800).
+                        attr("r", 12).
+                        attr("fill", "#FFD700");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 800).
+                        text("Host country").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    //Zooming
+
+                    function zoomInfo(d) {
+                        var centroid = path.centroid(d);
+                        var x = centroid[0];
+                        var y = centroid[1];
+                        var scale_rate = 5;
+                        states.style("pointer-events", "none");
+                        states.transition()
+                            .duration(1000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + ((height / 2) + 160) + ")scale(" + scale_rate + ")translate(" + -x +
+                                "," + -y + ")")
+                            .transition()
+                            .delay(5000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + height / 2 + ")scale(" + 1 + ")translate(" + -width / 2 +
+                                "," + -height / 2 + ")");
+
+                        //Sorting the results
+
+                        results.sort(function (a, b) { return b - a; })
+                        console.log(results);
+
+                        //Displaying statistics 
+
+                        states.append("rect")
+                            .attr("x", x + 10)
+                            .attr("y", y)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#c7c7c7")
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 90)
+                            .attr("height", 90)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Title
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 22)
+                            .attr("dy", y + 9)
+                            .attr("font-size", "7")
+                            .attr("font-family", "'Audiowide', cursive")
+                            .attr("fill", "black")
+                            .text(d.properties.Country_Name)
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("rect")
+                            .attr("x", x + 15)
+                            .attr("y", y + 13)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 80)
+                            .attr("height", 1)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Medals
+
+                        //GOLD
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 30)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 30)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "yellow")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //SILVER
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 50)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50);
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 50)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "gray")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //BRONZE
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 70)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70);
+
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 70)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#b08d57")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //MEDALS VALUE
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 25)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return "Did not participate!"
+                                }
+                                else
+                                    return "Won " + d.properties.Gold + " gold medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 45)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Silver + " silver medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 65)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Bronze + " bronze medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove();
+
+                        //GRAPH
+
+                        if (d.properties.Overall != null) {
+                            states.append("rect")
+                                .attr("x", x - 100)
+                                .attr("y", y - 50)
+                                .attr("width", 0)
+                                .attr("height", 0)
+                                .attr("fill", "#c7c7c7")
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.7)
+                                .attr("opacity", 1)
+                                .transition()
+                                .duration(500)
+                                .attr("width", 90)
+                                .attr("height", 130)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("width", 0)
+                                .attr("height", 0);
+
+                            //AXISES
+
+                            states.append("line")
+                                .attr("x1", x - 85)
+                                .attr("y1", y + 75)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 85)
+                                .attr("y2", y - 45)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+
+
+                            states.append("line")
+                                .attr("x1", x - 90)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 25)
+                                .attr("y2", y + 70)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+
+                            //SELECTED COUNTRY
+
+                            states.append("line")
+                                .attr("x1", x - 75)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "yellow")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70 - d.properties.Overall)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 83)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(d.properties.Country_Name)
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //MOST CROWNED COUNTRIES
+
+                            states.append("line")
+                                .attr("x1", x - 55)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "red")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 58)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("US")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 45)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "blue")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 48)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("China")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 35)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "green")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 38)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Russia")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //GRAPH TICKS
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - d.properties.Overall)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - d.properties.Overall)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - d.properties.Overall)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - d.properties.Overall)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - d.properties.Overall)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(d.properties.Overall)
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[0])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[0])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[0])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[1])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[1])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[1])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[2])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[2])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[2])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //TITLE
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 40)
+                                .attr("dy", y - 40)
+                                .attr("font-size", "3.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Overall medals")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 45)
+                                .attr("dy", y - 35)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Top 3 - Chosen country")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                        }
+
+
+                        var timer = d3.timer(function (time) {
+                            console.log(time);
+                            if (time >= 5000) {
+                                timer.stop();
+                                states.style("pointer-events", "auto");
+                            }
+                        })
+                    }
+
+                })
+            }
+            if (currentYear == "2012") {
+                var world = d3.json("worldData2012.json", function (error, world) {
+                    var statesData = topojson.feature(world, world.objects.countries);
+                    var color = d3.scale.linear()
+                        .domain([0, 110])
+                        .range(["white", "blue"]);
+
+                    var results = [];
+                    var states = svg.append("g");
+                    states.selectAll('path.country')
+                        .data(statesData.features)
+                        .enter()
+                        .append('path')
+                        .classed("state", true)
+                        .attr("d", path)
+                        .attr("id", function (d) { return d.id; })
+                        .attr("name", function (d) {
+                            return d.properties.Country_Name;
+                        })
+                        .style("fill", function (d) {
+                            if (d.properties.Country_Name == d.properties.Host_country) {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze)
+                                return "#FFD700";
+                            }
+                            else if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                results.push(0)
+                                return "gray";
+                            } else {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                                return color(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                            }
+                        })
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                        .on('mouseover', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '0.2');
+                        })
+                        .on('mouseout', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '1');
+                        })
+                        .on('click', zoomInfo);
+
+                    //Legend
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 650).
+                        attr("r", 12).
+                        attr("fill", "gray").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 650).
+                        text("Did not participate").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 680).
+                        attr("r", 12).
+                        attr("fill", "white").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 680).
+                        text("0 - 10 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 710).
+                        attr("r", 12).
+                        style("fill", color(15));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 710).
+                        text("10 - 30 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 740).
+                        attr("r", 12).
+                        style("fill", color(40));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 740).
+                        text("30 - 50 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 770).
+                        attr("r", 12).
+                        style("fill", color(90));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 770).
+                        text("50 - 100 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 800).
+                        attr("r", 12).
+                        attr("fill", "#FFD700");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 800).
+                        text("Host country").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    //Zooming
+
+                    function zoomInfo(d) {
+                        var centroid = path.centroid(d);
+                        var x = centroid[0];
+                        var y = centroid[1];
+                        var scale_rate = 5;
+                        states.style("pointer-events", "none");
+                        states.transition()
+                            .duration(1000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + ((height / 2) + 160) + ")scale(" + scale_rate + ")translate(" + -x +
+                                "," + -y + ")")
+                            .transition()
+                            .delay(5000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + height / 2 + ")scale(" + 1 + ")translate(" + -width / 2 +
+                                "," + -height / 2 + ")");
+
+                        //Sorting the results
+
+                        results.sort(function (a, b) { return b - a; })
+                        console.log(results);
+
+                        //Displaying statistics 
+
+                        states.append("rect")
+                            .attr("x", x + 10)
+                            .attr("y", y)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#c7c7c7")
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 90)
+                            .attr("height", 90)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Title
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 22)
+                            .attr("dy", y + 9)
+                            .attr("font-size", "7")
+                            .attr("font-family", "'Audiowide', cursive")
+                            .attr("fill", "black")
+                            .text(d.properties.Country_Name)
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("rect")
+                            .attr("x", x + 15)
+                            .attr("y", y + 13)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 80)
+                            .attr("height", 1)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Medals
+
+                        //GOLD
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 30)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 30)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "yellow")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //SILVER
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 50)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50);
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 50)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "gray")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //BRONZE
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 70)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70);
+
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 70)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#b08d57")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //MEDALS VALUE
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 25)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return "Did not participate!"
+                                }
+                                else
+                                    return "Won " + d.properties.Gold + " gold medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 45)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Silver + " silver medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 65)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Bronze + " bronze medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove();
+
+
+                        //GRAPH
+
+                        if (d.properties.Gold != null && d.properties.Silver != null && d.properties.Bronze != null) {
+                            states.append("rect")
+                                .attr("x", x - 100)
+                                .attr("y", y - 50)
+                                .attr("width", 0)
+                                .attr("height", 0)
+                                .attr("fill", "#c7c7c7")
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.7)
+                                .attr("opacity", 1)
+                                .transition()
+                                .duration(500)
+                                .attr("width", 90)
+                                .attr("height", 130)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("width", 0)
+                                .attr("height", 0);
+
+                            //AXISES
+
+                            states.append("line")
+                                .attr("x1", x - 85)
+                                .attr("y1", y + 75)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 85)
+                                .attr("y2", y - 45)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+
+
+                            states.append("line")
+                                .attr("x1", x - 90)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 25)
+                                .attr("y2", y + 70)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+
+                            //SELECTED COUNTRY
+
+                            states.append("line")
+                                .attr("x1", x - 75)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "yellow")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 83)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(d.properties.Country_Name)
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //MOST CROWNED COUNTRIES
+
+                            states.append("line")
+                                .attr("x1", x - 55)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "red")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 58)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("US")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 45)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "blue")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 48)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("China")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 35)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "green")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 38)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Russia")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //GRAPH TICKS
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text((d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[0])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[0])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[0])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[1])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[1])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[1])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[2])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[2])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[2])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //TITLE
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 40)
+                                .attr("dy", y - 40)
+                                .attr("font-size", "3.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Overall medals")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 45)
+                                .attr("dy", y - 35)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Top 3 - Chosen country")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                        }
+
+                        var timer = d3.timer(function (time) {
+                            console.log(time);
+                            if (time >= 5000) {
+                                timer.stop();
+                                states.style("pointer-events", "auto");
+
+                            }
+                        })
+                    }
+
+                })
+            }
+
+            if (currentYear == "2016") {
+                var world = d3.json("worldData2016.json", function (error, world) {
+                    var statesData = topojson.feature(world, world.objects.countries);
+                    var color = d3.scale.linear()
+                        .domain([0, 110])
+                        .range(["white", "green"]);
+
+                    var results = [];
+                    var states = svg.append("g");
+                    states.selectAll('path.country')
+                        .data(statesData.features)
+                        .enter()
+                        .append('path')
+                        .classed("state", true)
+                        .attr("d", path)
+                        .attr("id", function (d) { return d.id; })
+                        .attr("name", function (d) {
+                            return d.properties.Country_Name;
+                        })
+                        .style("fill", function (d) {
+                            if (d.properties.Country_Name == d.properties.Host_country) {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze)
+                                return "#FFD700";
+                            }
+                            else if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                results.push(0)
+                                return "gray";
+                            } else {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                                return color(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                            }
+                        })
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                        .on('mouseover', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '0.2');
+                        })
+                        .on('mouseout', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '1');
+                        })
+                        .on('click', zoomInfo);
+
+                    //Legend
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 650).
+                        attr("r", 12).
+                        attr("fill", "gray").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 650).
+                        text("Did not participate").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 680).
+                        attr("r", 12).
+                        attr("fill", "white").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 680).
+                        text("0 - 10 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 710).
+                        attr("r", 12).
+                        style("fill", color(20));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 710).
+                        text("10 - 30 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 740).
+                        attr("r", 12).
+                        style("fill", color(45));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 740).
+                        text("30 - 50 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 770).
+                        attr("r", 12).
+                        style("fill", color(90));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 770).
+                        text("50 - 100 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 800).
+                        attr("r", 12).
+                        attr("fill", "#FFD700");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 800).
+                        text("Host country").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    //Zooming
+
+                    function zoomInfo(d) {
+                        var centroid = path.centroid(d);
+                        var x = centroid[0];
+                        var y = centroid[1];
+                        var scale_rate = 5;
+                        states.style("pointer-events", "none");
+                        states.transition()
+                            .duration(1000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + ((height / 2) + 160) + ")scale(" + scale_rate + ")translate(" + -x +
+                                "," + -y + ")")
+                            .transition()
+                            .delay(5000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + height / 2 + ")scale(" + 1 + ")translate(" + -width / 2 +
+                                "," + -height / 2 + ")");
+
+                        //Sorting the results
+
+                        results.sort(function (a, b) { return b - a; })
+                        console.log(results);
+
+                        //Displaying statistics 
+
+                        states.append("rect")
+                            .attr("x", x + 10)
+                            .attr("y", y)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#c7c7c7")
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 90)
+                            .attr("height", 90)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Title
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 22)
+                            .attr("dy", y + 9)
+                            .attr("font-size", "7")
+                            .attr("font-family", "'Audiowide', cursive")
+                            .attr("fill", "black")
+                            .text(d.properties.Country_Name)
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("rect")
+                            .attr("x", x + 15)
+                            .attr("y", y + 13)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 80)
+                            .attr("height", 1)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Medals
+
+                        //GOLD
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 30)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 30)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "yellow")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //SILVER
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 50)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50);
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 50)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "gray")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //BRONZE
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 70)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70);
+
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 70)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#b08d57")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //MEDALS VALUE
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 25)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return "Did not participate!"
+                                }
+                                else
+                                    return "Won " + d.properties.Gold + " gold medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 45)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Silver + " silver medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 65)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Bronze + " bronze medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        //GRAPH
+
+                        if (d.properties.Gold != null && d.properties.Silver != null && d.properties.Bronze != null) {
+                            states.append("rect")
+                                .attr("x", x - 100)
+                                .attr("y", y - 55)
+                                .attr("width", 0)
+                                .attr("height", 0)
+                                .attr("fill", "#c7c7c7")
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.7)
+                                .attr("opacity", 1)
+                                .transition()
+                                .duration(500)
+                                .attr("width", 90)
+                                .attr("height", 135)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("width", 0)
+                                .attr("height", 0);
+
+                            //AXISES
+
+                            states.append("line")
+                                .attr("x1", x - 85)
+                                .attr("y1", y + 75)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 85)
+                                .attr("y2", y - 53)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+
+
+                            states.append("line")
+                                .attr("x1", x - 90)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 25)
+                                .attr("y2", y + 70)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+
+                            //SELECTED COUNTRY
+
+                            states.append("line")
+                                .attr("x1", x - 75)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "yellow")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 83)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(d.properties.Country_Name)
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //MOST CROWNED COUNTRIES
+
+                            states.append("line")
+                                .attr("x1", x - 55)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "red")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 58)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("US")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 45)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "blue")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 48)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("China")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 35)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "green")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 38)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("GB")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //GRAPH TICKS
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text((d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[0])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[0])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[0])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[1])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[1])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[1])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[2])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[2])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[2])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //TITLE
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 40)
+                                .attr("dy", y - 40)
+                                .attr("font-size", "3.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Overall medals")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 45)
+                                .attr("dy", y - 35)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Top 3 - Chosen country")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                        }
+
+
+
+                        var timer = d3.timer(function (time) {
+                            console.log(time);
+                            if (time >= 5000) {
+                                timer.stop();
+                                states.style("pointer-events", "auto");
+
+                            }
+                        })
+                    }
+
+                })
+            }
+
+            if (currentYear == "2020") {
+                var world = d3.json("worldData2021.json", function (error, world) {
+                    var statesData = topojson.feature(world, world.objects.countries);
+                    var color = d3.scale.linear()
+                        .domain([0, 110])
+                        .range(["white", "brown"]);
+
+                    var results = [];
+                    var states = svg.append("g");
+                    states.selectAll('path.country')
+                        .data(statesData.features)
+                        .enter()
+                        .append('path')
+                        .classed("state", true)
+                        .attr("d", path)
+                        .attr("id", function (d) { return d.id; })
+                        .attr("name", function (d) {
+                            return d.properties.Country_Name;
+                        })
+                        .style("fill", function (d) {
+                            if (d.properties.Country_Name == d.properties.Host_country) {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze)
+                                return "#FFD700";
+                            }
+                            else if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                results.push(0)
+                                return "gray";
+                            } else {
+                                results.push(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                                return color(d.properties.Gold + d.properties.Silver + d.properties.Bronze);
+                            }
+                        })
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                        .on('mouseover', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '0.2');
+                        })
+                        .on('mouseout', function (d, i) {
+                            d3.select(this).transition()
+                                .duration('50')
+                                .attr('opacity', '1');
+                        })
+                        .on('click', zoomInfo);
+
+                    //Legend
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 650).
+                        attr("r", 12).
+                        attr("fill", "gray").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 650).
+                        text("Did not participate").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 680).
+                        attr("r", 12).
+                        attr("fill", "white").
+                        attr("stroke", "black");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 680).
+                        text("0 - 10 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 710).
+                        attr("r", 12).
+                        style("fill", color(20));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 710).
+                        text("10 - 30 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 740).
+                        attr("r", 12).
+                        style("fill", color(45));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 740).
+                        text("30 - 50 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 770).
+                        attr("r", 12).
+                        style("fill", color(90));
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 770).
+                        text("50 - 100 won medals").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+                    states.append("circle").
+                        attr("cx", 50).
+                        attr("cy", 800).
+                        attr("r", 12).
+                        attr("fill", "#FFD700");
+
+                    states.append("text").
+                        attr("x", 70).
+                        attr("y", 800).
+                        text("Host country").
+                        style("font-size", "15px").
+                        attr("font-family", "'Days One', sans-serif").
+                        attr("alignment-baseline", "middle");
+
+
+                    //Zooming
+
+                    function zoomInfo(d) {
+                        var centroid = path.centroid(d);
+                        var x = centroid[0];
+                        var y = centroid[1];
+                        var scale_rate = 5;
+                        states.style("pointer-events", "none");
+                        states.transition()
+                            .duration(1000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + ((height / 2) + 160) + ")scale(" + scale_rate + ")translate(" + -x +
+                                "," + -y + ")")
+                            .transition()
+                            .delay(5000)
+                            .attr("transform", "translate(" + width /
+                                2 + "," + height / 2 + ")scale(" + 1 + ")translate(" + -width / 2 +
+                                "," + -height / 2 + ")");
+
+                        //Sorting the results
+
+                        results.sort(function (a, b) { return b - a; })
+                        console.log(results);
+
+                        //Displaying statistics 
+
+                        states.append("rect")
+                            .attr("x", x + 10)
+                            .attr("y", y)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#c7c7c7")
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 90)
+                            .attr("height", 90)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Title
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 22)
+                            .attr("dy", y + 9)
+                            .attr("font-size", "7")
+                            .attr("font-family", "'Audiowide', cursive")
+                            .attr("fill", "black")
+                            .text(d.properties.Country_Name)
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("rect")
+                            .attr("x", x + 15)
+                            .attr("y", y + 13)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "black")
+                            .attr("stroke-width", 0.7)
+                            .attr("opacity", 1)
+                            .transition()
+                            .duration(500)
+                            .attr("width", 80)
+                            .attr("height", 1)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //Medals
+
+                        //GOLD
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 20)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 20)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 30)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 20)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 30)
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 30)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "yellow")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //SILVER
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 40)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 40)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 50)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 40)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 50);
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 50)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "gray")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //BRONZE
+
+                        states.append("line")
+                            .attr("x1", x + 15)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 30)
+                            .attr("y1", y + 60)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 30)
+                            .attr("y2", y + 60)
+
+                        states.append("line")
+                            .attr("x1", x + 22.5)
+                            .attr("y1", y + 70)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 0.5)
+                            .transition()
+                            .duration(500)
+                            .attr("x2", x + 15)
+                            .attr("y2", y + 60)
+                            .transition()
+                            .duration(500)
+                            .delay(5000)
+                            .attr("x2", x + 22.5)
+                            .attr("y2", y + 70);
+
+
+                        states.append("rect")
+                            .attr("x", x + 20.5)
+                            .attr("y", y + 70)
+                            .attr("width", 0)
+                            .attr("height", 0)
+                            .attr("fill", "#b08d57")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("width", 4)
+                            .attr("height", 7)
+                            .transition()
+                            .duration(750)
+                            .delay(4500)
+                            .attr("width", 0)
+                            .attr("height", 0);
+
+                        //MEDALS VALUE
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 25)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return "Did not participate!"
+                                }
+                                else
+                                    return "Won " + d.properties.Gold + " gold medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 45)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Silver + " silver medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        states.append("text")
+                            .transition()
+                            .duration(500)
+                            .delay(500)
+                            .attr("dx", x + 35)
+                            .attr("dy", y + 65)
+                            .attr("font-size", "5")
+                            .attr("font-family", "'Days One', sans-serif")
+                            .attr("fill", "black")
+                            .text(function () {
+                                if (d.properties.Gold == null && d.properties.Silver == null && d.properties.Bronze == null) {
+                                    return ""
+                                }
+                                else
+                                    return "Won " + d.properties.Bronze + " bronze medals";
+                            })
+                            .transition()
+                            .delay(4500)
+                            .remove()
+
+                        //GRAPH
+
+                        if (d.properties.Gold != null && d.properties.Silver != null && d.properties.Bronze != null) {
+                            states.append("rect")
+                                .attr("x", x - 100)
+                                .attr("y", y - 50)
+                                .attr("width", 0)
+                                .attr("height", 0)
+                                .attr("fill", "#c7c7c7")
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.7)
+                                .attr("opacity", 1)
+                                .transition()
+                                .duration(500)
+                                .attr("width", 90)
+                                .attr("height", 130)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("width", 0)
+                                .attr("height", 0);
+
+                            //AXISES
+
+                            states.append("line")
+                                .attr("x1", x - 85)
+                                .attr("y1", y + 75)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 85)
+                                .attr("y2", y - 45)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 85)
+                                .attr("y2", y + 75)
+
+
+                            states.append("line")
+                                .attr("x1", x - 90)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 25)
+                                .attr("y2", y + 70)
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 90)
+                                .attr("y2", y + 70)
+
+                            //SELECTED COUNTRY
+
+                            states.append("line")
+                                .attr("x1", x - 75)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "yellow")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 75)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 83)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(d.properties.Country_Name)
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //MOST CROWNED COUNTRIES
+
+                            states.append("line")
+                                .attr("x1", x - 55)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "red")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 55)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 58)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("US")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 45)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "blue")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 45)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 48)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("China")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 35)
+                                .attr("y1", y + 70)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+                                .attr("stroke", "green")
+                                .attr("stroke-width", 1.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 35)
+                                .attr("y2", y + 70)
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 38)
+                                .attr("dy", y + 75)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("ROC")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //GRAPH TICKS
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - (d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text((d.properties.Gold + d.properties.Silver + d.properties.Bronze))
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[0])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[0])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[0])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[0])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[0])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[1])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[1])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[1])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[1])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[1])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("line")
+                                .attr("x1", x - 87)
+                                .attr("y1", y + 70 - results[2])
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+                                .attr("stroke", "black")
+                                .attr("stroke-width", 0.5)
+                                .transition()
+                                .duration(500)
+                                .attr("x2", x - 83)
+                                .attr("y2", y + 70 - results[2])
+                                .transition()
+                                .duration(500)
+                                .delay(5000)
+                                .attr("x2", x - 87)
+                                .attr("y2", y + 70 - results[2])
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 94)
+                                .attr("dy", y + 71 - results[2])
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text(results[2])
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            //TITLE
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 40)
+                                .attr("dy", y - 40)
+                                .attr("font-size", "3.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Overall medals")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                            states.append("text")
+                                .transition()
+                                .duration(500)
+                                .delay(500)
+                                .attr("dx", x - 45)
+                                .attr("dy", y - 35)
+                                .attr("font-size", "2.5")
+                                .attr("font-family", "'Days One', sans-serif")
+                                .attr("fill", "black")
+                                .text("Top 3 - Chosen country")
+                                .transition()
+                                .delay(4500)
+                                .remove();
+
+                        }
+
+
+
+                        var timer = d3.timer(function (time) {
+                            console.log(time);
+                            if (time >= 5000) {
+                                timer.stop();
+                                states.style("pointer-events", "auto");
+
+                            }
+                        })
+                    }
+
+                })
+            }
+
+        }
+
+    </script>
+</body>
+
+</html>
